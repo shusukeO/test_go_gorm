@@ -9,7 +9,7 @@
 - context を渡して時間がかかるクエリのタイムアウト時間を設定できる
 - WithContext って記述をよく見て、なんだろうって思ってたやつ
 
-```
+```go
 ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 defer cancel()
 
@@ -18,7 +18,7 @@ db.WithContext(ctx).Find(&users)
 
 - エラーハンドリングは、\*gorm.DB の Error フィールドを確認する
 
-```
+```go
 if err := db.Where("name = ?", "jinzhu").First(&user).Error; err != nil {
   // ここでエラーハンドリング
 }
