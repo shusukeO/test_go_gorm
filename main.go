@@ -2,43 +2,61 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"os"
 
+	"gorm.io/driver/mysql"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
-type Product struct {
+type Project struct {
 	gorm.Model
-	Code  string
-	Price uint
-	Name  string
+	Name     string
+	RegionID string `gorm:"not null;default:'japan';"`
 }
 
 func main() {
-	db, err := gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
-	if err != nil {
-		panic("failed to connect database")
+	// データベースタイプを環境変数で切り替え (DB_TYPE=mysql または DB_TYPE=sqlite)
+	dbType := os.Getenv("DB_TYPE")
+	if dbType == "" {
+		dbType = "sqlite"
 	}
 
-	// Migrate the schema
-	db.AutoMigrate(&Product{})
+	var db *gorm.DB
+	var err error
 
-	// Create
-	db.Create(&Product{Code: "D42", Price: 100, Name: "椅子"})
+	switch dbType {
+	case "mysql":
+		// MySQL接続設定
+		dsn := "testuser:testpass@tcp(localhost:3306)/testdb?charset=utf8mb4&parseTime=True&loc=Local"
+		db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{
+			Logger: logger.Default.LogMode(logger.Info),
+		})
+		if err != nil {
+			log.Fatalf("failed to connect to MySQL: %v", err)
+		}
+		fmt.Println("Connected to MySQL")
+	case "sqlite":
+		// SQLite接続設定
+		db, err = gorm.Open(sqlite.Open("test.db"), &gorm.Config{
+			Logger: logger.Default.LogMode(logger.Info),
+		})
+		if err != nil {
+			log.Fatalf("failed to connect to SQLite: %v", err)
+		}
+		fmt.Println("Connected to SQLite")
+	default:
+		log.Fatalf("Unsupported DB_TYPE: %s", dbType)
+	}
 
-	// Read
-	var product Product
-	db.First(&product, 1)                               // find product with integer primary key
-	db.First(&product, "code = ?", "D42")               // find product with code D42
-	db.First(&product, "name = ?", "椅子").Scan(&product) // find product with name 椅子
-	fmt.Println(product)
+	db.AutoMigrate(&Project{})
 
-	// Update - update product's price to 200
-	db.Model(&product).Update("Price", 200)
-	// Update - update multiple fields
-	db.Model(&product).Updates(Product{Price: 200, Code: "F42"}) // non-zero fields
-	db.Model(&product).Updates(map[string]interface{}{"Price": 200, "Code": "F42"})
+	// db.Create(&Project{Name: "Test Project" /*RegionID: "japan"*/})
 
-	// Delete - delete product
-	db.Delete(&product, 1)
+	var project Project
+	db.First(&project, 1)
+
+	fmt.Println("Project ", project)
 }
